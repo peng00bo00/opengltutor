@@ -7,15 +7,52 @@
 #include <cstring>
 #include <cstdlib>
 
-static void render() {
+#define N_DIVIDE 360
+#define PI 3.1415926535897f
+
+constexpr float Rin    = 0.1;
+constexpr float Rout   = 0.2;
+constexpr float dtheta = 1.0f / N_DIVIDE * 2 * PI;
+
+static void drawCircle(float cx, float cy, float R, float G, float B) {
+    float x1, y1;
+    float x2, y2;
+
     glBegin(GL_TRIANGLES);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(0.0f, 0.5f, 0.0f);
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(-0.5f, -0.5f, 0.0f);
-    glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(0.5f, -0.5f, 0.0f);
+    for (size_t i = 0; i < N_DIVIDE; i++)
+    {
+        float theta = float(i) / N_DIVIDE * 2 * PI;
+        
+        x1 = cx + Rout * cosf(theta);        y1 = cy + Rout * sinf(theta);
+        x2 = cx + Rout * cosf(theta+dtheta); y2 = cy + Rout * sinf(theta+dtheta);
+
+        glColor3f(R, G, B);
+        glVertex3f(cx, cy, 0.0f);
+        glVertex3f(x1, y1, 0.0f);
+        glVertex3f(x2, y2, 0.0f);
+
+        x1 = cx + Rin * cosf(theta);        y1 = cy + Rin * sinf(theta);
+        x2 = cx + Rin * cosf(theta+dtheta); y2 = cy + Rin * sinf(theta+dtheta);
+
+        glColor3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(cx, cy, 0.0f);
+        glVertex3f(x1, y1, 0.0f);
+        glVertex3f(x2, y2, 0.0f);
+    }
+
     CHECK_GL(glEnd());
+}
+
+static void render() {
+    // glBegin(GL_TRIANGLES);
+    // glColor3f(1.0f, 0.0f, 0.0f);
+    // glVertex3f(0.0f, 0.5f, 0.0f);
+    // glColor3f(0.0f, 1.0f, 0.0f);
+    // glVertex3f(-0.5f, -0.5f, 0.0f);
+    // glColor3f(0.0f, 0.0f, 1.0f);
+    // glVertex3f(0.5f, -0.5f, 0.0f);
+    // CHECK_GL(glEnd());
+
     /* glBegin(GL_TRIANGLES); */
     /* constexpr int n = 100; */
     /* constexpr float pi = 3.1415926535897f; */
@@ -37,6 +74,23 @@ static void render() {
         /* glVertex3f(radius * sinf(angle_next), radius * cosf(angle_next), 0.0f); */
     /* } */
     /* CHECK_GL(glEnd()); */
+    
+    float cx, cy;
+    float r = 0.3f;
+
+    // red circle
+    cx = 0.f; cy = r;
+    drawCircle(cx, cy, 1.0f, 0.0f, 0.0f);
+
+    // green circle
+    cx = -r * cosf(PI / 6);
+    cy = -r * 0.5f;
+    drawCircle(cx, cy, 0.0f, 1.0f, 0.0f);
+
+    // blue circle
+    cx =  r * cosf(PI / 6);
+    cy = -r * 0.5f;
+    drawCircle(cx, cy, 0.0f, 0.0f, 1.0f);
 }
 
 int main() {
