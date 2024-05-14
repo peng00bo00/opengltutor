@@ -1,112 +1,72 @@
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
-#include "check_gl.hpp" // includes glad/glad.h
-#include <GLFW/glfw3.h> // must be placed behind glad/glad.h
-#include <stdexcept>
+#include "check_gl.hpp"
 #include <iostream>
-#include <cstring>
+#include "Game.hpp"
+#ifdef _WIN32
+#include <windows.h>
 #include <cstdlib>
-
-#define N_DIVIDE 360
-#define PI 3.1415926535897f
-
-constexpr float Rin    = 0.1;
-constexpr float Rout   = 0.2;
-constexpr float dtheta = 1.0f / N_DIVIDE * 2 * PI;
-
-static void drawCircle(float cx, float cy, float R, float G, float B) {
-    float x1, y1;
-    float x2, y2;
-
-    glBegin(GL_TRIANGLES);
-    for (size_t i = 0; i < N_DIVIDE; i++)
-    {
-        float theta = float(i) / N_DIVIDE * 2 * PI;
-        
-        x1 = cx + Rout * cosf(theta);        y1 = cy + Rout * sinf(theta);
-        x2 = cx + Rout * cosf(theta+dtheta); y2 = cy + Rout * sinf(theta+dtheta);
-
-        glColor3f(R, G, B);
-        glVertex3f(cx, cy, 0.0f);
-        glVertex3f(x1, y1, 0.0f);
-        glVertex3f(x2, y2, 0.0f);
-
-        x1 = cx + Rin * cosf(theta);        y1 = cy + Rin * sinf(theta);
-        x2 = cx + Rin * cosf(theta+dtheta); y2 = cy + Rin * sinf(theta+dtheta);
-
-        glColor3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(cx, cy, 0.0f);
-        glVertex3f(x1, y1, 0.0f);
-        glVertex3f(x2, y2, 0.0f);
-    }
-
-    CHECK_GL(glEnd());
-}
-
-static void render() {
-    // glBegin(GL_TRIANGLES);
-    // glColor3f(1.0f, 0.0f, 0.0f);
-    // glVertex3f(0.0f, 0.5f, 0.0f);
-    // glColor3f(0.0f, 1.0f, 0.0f);
-    // glVertex3f(-0.5f, -0.5f, 0.0f);
-    // glColor3f(0.0f, 0.0f, 1.0f);
-    // glVertex3f(0.5f, -0.5f, 0.0f);
-    // CHECK_GL(glEnd());
-
-    /* glBegin(GL_TRIANGLES); */
-    /* constexpr int n = 100; */
-    /* constexpr float pi = 3.1415926535897f; */
-    /* float radius = 0.5f; */
-    /* float inner_radius = 0.25f; */
-    /* static int x = 0; */
-    /* x++; */
-    /* if (x > n) */
-    /*     x -= n; */
-    /* for (int i = 0; i < x; i++) { */
-    /*     float angle = i / (float)n * pi * 2; */
-    /*     float angle_next = (i + 1) / (float)n * pi * 2; */
-    /*     glVertex3f(0.0f, 0.0f, 0.0f); */
-    /*     glVertex3f(radius * sinf(angle), radius * cosf(angle), 0.0f); */
-    /*     glVertex3f(radius * sinf(angle_next), radius * cosf(angle_next), 0.0f); */
-        /* glVertex3f(inner_radius * sinf(angle), inner_radius * cosf(angle), 0.0f); */
-        /* glVertex3f(inner_radius * sinf(angle_next), inner_radius * cosf(angle_next), 0.0f); */
-        /* glVertex3f(inner_radius * sinf(angle), inner_radius * cosf(angle), 0.0f); */
-        /* glVertex3f(radius * sinf(angle_next), radius * cosf(angle_next), 0.0f); */
-    /* } */
-    /* CHECK_GL(glEnd()); */
-    
-    float cx, cy;
-    float r = 0.3f;
-
-    // red circle
-    cx = 0.f; cy = r;
-    drawCircle(cx, cy, 1.0f, 0.0f, 0.0f);
-
-    // green circle
-    cx = -r * cosf(PI / 6);
-    cy = -r * 0.5f;
-    drawCircle(cx, cy, 0.0f, 1.0f, 0.0f);
-
-    // blue circle
-    cx =  r * cosf(PI / 6);
-    cy = -r * 0.5f;
-    drawCircle(cx, cy, 0.0f, 0.0f, 1.0f);
-}
+#include <clocale>
+#endif
 
 int main() {
+#ifdef _WIN32
+    try {
+        // this is to support Unicode in the console
+        static UINT oldCCP = GetConsoleOutputCP();
+        if (!SetConsoleOutputCP(CP_UTF8)) {
+            std::cerr << "warning: failed to chcp 65001 for utf-8 output\n";
+        } else {
+            std::atexit(+[] { SetConsoleOutputCP(oldCCP); });
+        }
+        static UINT oldCP = GetConsoleCP();
+        if (!SetConsoleCP(CP_UTF8)) {
+            std::cerr << "warning: failed to chcp 65001 for utf-8 input\n";
+        } else {
+            std::atexit(+[] { SetConsoleCP(oldCP); });
+        }
+        // this is to support ANSI control characters (e.g. \033[0m)
+        static HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+        static HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hIn != INVALID_HANDLE_VALUE && hOut != INVALID_HANDLE_VALUE) {
+            static DWORD oldOutMode = 0;
+            static DWORD oldInMode = 0;
+            GetConsoleMode(hOut, &oldOutMode);
+            GetConsoleMode(hIn, &oldInMode);
+            if (SetConsoleMode(hOut, oldOutMode | 0x000C)) {
+                std::atexit(+[] { SetConsoleMode(hOut, oldOutMode); });
+                if (SetConsoleMode(hIn, oldInMode | 0x0200)) {
+                    std::atexit(+[] { SetConsoleMode(hIn, oldInMode); });
+                }
+            }
+        }
+        // this is to support Unicode in path name (make Windows API regard char * as UTF-8 instead of GBK)
+        // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale
+        // Windows 10 1803 or above required
+        std::setlocale(LC_ALL, ".UTF-8");
+    } catch (...) {
+        std::cerr << "warning: failed to set utf-8 locale\n";
+    }
+#endif
+
+    // Initalize GLFW library
     if (!glfwInit()) {
-        const char *errmsg;
+        const char *errmsg = nullptr;
         glfwGetError(&errmsg);
         if (!errmsg) errmsg = "(no error)";
         std::cerr << "failed to initialize GLFW: " << errmsg << '\n';
         return -1;
     }
 
-    // hint the version required: OpenGL 2.0
+    // Hint the version required: OpenGL 2.0
     constexpr int version = 20;
-    glfwWindowHint(GLFW_OPENGL_API, GLFW_OPENGL_API);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_NATIVE_CONTEXT_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version / 10);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version % 10);
+#ifndef NDEBUG
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#else
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
+#endif
     if (version >= 33) {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
@@ -114,60 +74,87 @@ int main() {
 #endif
     }
 
-    // Create window
-    GLFWwindow *window = glfwCreateWindow(640, 640, "Example", NULL, NULL);
+    // enable 4x MSAA
+    glfwWindowHint(GLFW_SAMPLES, 4);
+
+    // Enable transparent framebuffer
+    constexpr bool transparent = false;
+    if (transparent) {
+        glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+        glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+        glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+    }
+
+    // Create main window
+    constexpr char title[] = "Example";
+    GLFWwindow *window = glfwCreateWindow(1024, 768, title, NULL, NULL);
+
+    // Test if window creation succeed
     if (!window) {
-        const char *errmsg;
-        glfwGetError(&errmsg);
-        if (!errmsg) errmsg = "(no error)";
-        std::cerr << "GLFW failed to create window: " << errmsg << '\n';
-        std::cerr << "==============================================\n";
-        if (!strcmp(errmsg, "X11: The DISPLAY environment variable is missing")) {
-            std::cerr << "You seems not running with graphic display\n";
-        } else if (!strcmp(errmsg, "WGL: The driver does not appear to support OpenGL")) {
-            std::cerr << "Please consider install an OpenGL driver, or use the mesa driver\n";
-        } else if (!strcmp(errmsg, "WGL: Failed to create OpenGL context")) {
-            std::cerr << "Your driver seems not supporting the required OpenGL version\n";
-        }
-        std::cerr << "- If you have a physical graphic card (e.g. NVIDIA), install it from your graphic card vendor official website: http://www.nvidia.com/Download/index.aspx\n";
-        std::cerr << "- If you are using Windows, download opengl32.dll from https://pan.baidu.com/s/1TZ6nVJC7DZIuUarZrGJYow?pwd=opgl and place it into the same directory as this executable file (alternatively you may download opengl32sw.dll from Internet and rename it to opengl32.dll to place into the same directory as this executable file)\n";
-        std::cerr << "- If you are using Linux or WSL1, install the mesa driver: https://ubuntuhandbook.org/index.php/2021/07/install-latest-mesa-ubuntu-20-04-21-04/";
-        std::cerr << "- If you use WSL2, install WSLg: https://learn.microsoft.com/zh-cn/windows/wsl/tutorials/gui-apps\n";
-        std::cerr << "- If you are using SSH remote server, try connect it using ssh -X <ip address>\n";
-        std::cerr << "- If you are using MacOS, you probably want to use Windows or Linux instead for better OpenGL support\n";
-        std::cerr << "- If you are using a Laptop with dual-cards, make sure you have switch to dedicated card (NVIDIA) instead of the integrated card (Intel)\n";
-        std::cerr << "==============================================\n";
-#ifdef _WIN32
-        std::system("pause");
-#endif
+        check_gl::opengl_show_glfw_error_diagnose();
         glfwTerminate();
         return -1;
     }
     glfwMakeContextCurrent(window);
 
-    // Load glXXX function pointers
+    // Switch to fullscreen mode
+    constexpr bool fullscreen = false;
+    if (fullscreen) {
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (monitor) {
+            const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+            if (mode) {
+                glfwSetWindowSize(window, mode->width, mode->height);
+                glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+                std::cerr << "Entered fullscreen mode: " << mode->width << 'x' << mode->height
+                    << " at " << mode->refreshRate << " Hz\n";
+            }
+        }
+    } else {
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (monitor) {
+            const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+            if (mode) {
+                int width, height;
+                glfwGetWindowSize(window, &width, &height);
+                glfwSetWindowPos(window, (mode->width - width) / 2, (mode->height - height) / 2);
+            }
+        }
+    }
+
+    // Load glXXX function pointers (only after this you may use OpenGL functions)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         glfwTerminate();
         std::cerr << "GLAD failed to load GL functions\n";
         return -1;
     }
-    std::cerr << "OpenGL version: " << glGetString(GL_VERSION) << '\n';
+    check_gl::opengl_try_enable_debug_message();
 
-    CHECK_GL(glEnable(GL_POINT_SMOOTH));
-    CHECK_GL(glEnable(GL_BLEND));
-    CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-    CHECK_GL(glPointSize(64.0f));
+    // Print diagnostic information
+    std::cerr << "OpenGL version: " << (const char *)glGetString(GL_VERSION) << '\n';
 
-    // start main game loop
+    // Enable V-Sync
+    glfwSwapInterval(1);
+
+    // Create game instance
+    auto game = std::make_unique<Game>();
+    game->set_window(window);
+
+    // Initialize data structures
+    game->initialize();
+    // Start main game loop
     while (!glfwWindowShouldClose(window)) {
-        // render graphics
-        CHECK_GL(glClear(GL_COLOR_BUFFER_BIT));
-        render();
-        // refresh screen
+        // Render graphics
+        game->render();
+        // Update screen
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    game.reset();
     glfwTerminate();
     return 0;
 }
